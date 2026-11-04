@@ -43,13 +43,18 @@ public class UniversalAltCtrlInput : MonoBehaviour
     void Update()
     {
         //poll for input, depending on what kind of input/output is desired
-        prevValue = currentValue;
-        currentValue = currentController.PollForValue(outputType);
-
-        //throw an event if the value has changed. 
-        if (prevValue != currentValue && InputValueChanged != null)
+        int currentValContainer = currentValue;
+        int nextValContainer = currentController.PollForValue(outputType);
+        if (nextValContainer != -1)
         {
-            InputValueChanged(new InputValueChangedArgs(prevValue, currentValue));
+            prevValue = currentValContainer;
+            currentValue = nextValContainer;
+
+            //throw an event if the value has changed. 
+            if (prevValue != currentValue && InputValueChanged != null)
+            {
+                InputValueChanged(new InputValueChangedArgs(prevValue, currentValue));
+            }
         }
     }
 
@@ -92,17 +97,18 @@ public class InputValueChangedArgs : EventArgs
         this.currentValue = currentValue;
     }
 
-    private int priorValue
+    private int priorValue;
+    private int currentValue;
+
+    public int getPriorValue()
     {
-        get { return this.priorValue; }
-        set { this.priorValue = value; }
-    }
-    private int currentValue
-    {
-        get { return this.currentValue; }
-        set { this.currentValue = value; }
+        return priorValue;
     }
 
+    public int getCurrentValue()
+    {
+        return currentValue;
+    }
 
 }
 
@@ -159,8 +165,8 @@ public abstract class WorkshopController
     protected GameObject altCtrlInput;
     protected SerialController mySerialController;
 
-    private int readTimeout = 100;
-    private int writeTimeout = 100;
+    private int readTimeout = 10000;
+    private int writeTimeout = 10000;
     int baudRate = 9600;
     public abstract int PollForValue(UniversalAltCtrlInput.OUTPUT_TYPE outputType);
     public abstract void initializeController();
@@ -205,7 +211,7 @@ public abstract class WorkshopController
             }
             catch (Exception e)
             {
-                Debug.Log(e);
+               // Debug.Log(e);
 
                 //if fails, move on/do nothing
             }
@@ -219,7 +225,7 @@ public abstract class WorkshopController
 
     public int ParseArduinoOutput(String serialStr)
     {
-        if (serialStr.StartsWith("ALTCTRL"))
+        if (serialStr != null && serialStr.StartsWith("ALTCTRL"))
         {
             String value = serialStr.Substring(7);
             if (value != null)
@@ -232,10 +238,14 @@ public abstract class WorkshopController
 
     public int AnalogToDigital(int toConvert)
     {
-        if(toConvert < 512)
+        if(toConvert == -1)
+        {
+            return -1;
+        }
+        if (toConvert > 512)
         {
             return 1;
-        } 
+        }
         return 0;
     }
 
@@ -359,7 +369,7 @@ public class Tentacle : WorkshopController
     {
         if (mySerialController != null)
         {
-            int polledValue = ParseArduinoOutput(mySerialController.ReadSerialMessage()); 
+            int polledValue = ParseArduinoOutput(mySerialController.ReadSerialMessage());
             //parse the message
             //convert if necessary
             if (outputType == UniversalAltCtrlInput.OUTPUT_TYPE.Digital)
@@ -408,11 +418,11 @@ public class KachunkLever : WorkshopController
         if (mySerialController != null)
         {
             int polledValue = ParseArduinoOutput(mySerialController.ReadSerialMessage());
-            
+
             if (outputType == UniversalAltCtrlInput.OUTPUT_TYPE.Digital)
             {
                 //digital output
-                if(polledValue != 1)
+                if (polledValue != 1)
                 {
                     return 0;
                 }
@@ -458,7 +468,6 @@ public class BigOleButton : WorkshopController
         if (mySerialController != null)
         {
             int polledValue = ParseArduinoOutput(mySerialController.ReadSerialMessage());
-        
             if (outputType == UniversalAltCtrlInput.OUTPUT_TYPE.Digital)
             {
                 return AnalogToDigital(polledValue);

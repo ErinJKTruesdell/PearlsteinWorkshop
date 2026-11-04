@@ -919,7 +919,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1bdf8030f5bacd048a20c87ef019bfc0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  controllerType: 2
+  controllerType: 4
   outputType: 1
 --- !u!1 &1345753861
 GameObject:
