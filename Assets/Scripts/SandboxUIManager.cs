@@ -14,24 +14,45 @@ public class SandboxUIManager : MonoBehaviour
 
     public GameObject eventIndicator;
 
+    public TMP_Dropdown controllerTypeDropDown;
+    public Button controllerTypeButton;
+
     bool eventShowing;
     void Start()
     {
-        altCtrlInput = GameObject.FindFirstObjectByType<UniversalAltCtrlInput>();
-
-        if(altCtrlInput != null)
-        {
-            //subscribe to events
-            altCtrlInput.InputValueChanged += new UniversalAltCtrlInput.InputValueChangedHandler(ReactToControllerValueChangedEvent);
-            outputTypeText.text = altCtrlInput.outputType.ToString();
-            controllerTypeLabel.text = "Controller Type: " + altCtrlInput.controllerType.ToString();
-        } else
-        {
-            Debug.LogError("Error! Your sandbox scene is missing a Universal Alt Ctrl Input script.");
-        }
+       
             eventIndicator.SetActive(false);
         eventShowing = false;
 
+        //populate controller type dropdown
+        foreach(WorkshopController.CONTROLLER_TYPE controllerType in WorkshopController.CONTROLLER_TYPE.GetValues(typeof(WorkshopController.CONTROLLER_TYPE)))
+        {
+            controllerTypeDropDown.options.Add(new TMP_Dropdown.OptionData(controllerType.ToString()));
+        }
+
+    }
+
+    
+
+    public void LockInControllerType()
+    {
+        string s = controllerTypeDropDown.options[controllerTypeDropDown.value].text;
+        controllerTypeDropDown.enabled = false;
+        controllerTypeButton.enabled = false;
+        controllerTypeLabel.text = "Controller Type: " + s;
+        altCtrlInput = GameObject.FindFirstObjectByType<UniversalAltCtrlInput>();
+
+        altCtrlInput.SelectControllerTypeAndStart(s);
+
+        if (altCtrlInput != null)
+        {
+            //subscribe to events
+            altCtrlInput.InputValueChanged += new UniversalAltCtrlInput.InputValueChangedHandler(ReactToControllerValueChangedEvent);
+        }
+        else
+        {
+            Debug.LogError("Error! Your sandbox scene is missing a Universal Alt Ctrl Input script.");
+        }
     }
 
     // Update is called once per frame
@@ -47,7 +68,7 @@ public class SandboxUIManager : MonoBehaviour
         if (altCtrlInput != null)
         {
             altCtrlInput.ToggleOutputType();
-            outputTypeText.text = altCtrlInput.outputType.ToString();
+            outputTypeText.text = altCtrlInput.GetCurrentOutputType().ToString();
         }
     }
 

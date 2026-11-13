@@ -4,7 +4,7 @@ using System;
 using UnityEngine;
 using System.Threading;
 
-public class MIDIBridge : MonoBehaviour
+public class MIDIBridge 
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
@@ -44,7 +44,7 @@ public class MIDIBridge : MonoBehaviour
             string[] partsThree = partsTwo[0].Split(',');
             int noteNum = int.Parse(partsThree[0]); 
 
-            string value = partsThree[1].Trim();
+            string value = partsThree[0].Trim();
             int val = int.Parse(value);
 
             currentValue = convertNoteNumToValue(val);

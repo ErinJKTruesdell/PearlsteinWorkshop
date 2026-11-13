@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using static WorkshopControllerContainer;
@@ -15,10 +16,10 @@ public class UniversalAltCtrlInput : MonoBehaviour
     public enum OUTPUT_TYPE { Digital, Analog };
 
     [Tooltip("Select the controller that will be connected here.")]
-    public WorkshopController.CONTROLLER_TYPE controllerType;
+    WorkshopController.CONTROLLER_TYPE controllerType;
 
     [Tooltip("Whether to output digital (0 or 1) or analog (0 to 1023) values. Some controllers only support digital values, and will only output 0 or 1023 when set to Analog. Refer to your controller's documentation for reference.")]
-    public OUTPUT_TYPE outputType;
+    OUTPUT_TYPE outputType;
 
 
     //utility variables
@@ -26,10 +27,43 @@ public class UniversalAltCtrlInput : MonoBehaviour
 
     int currentValue;
     int prevValue;
+    bool isStarted;
 
+    Dictionary<string, WorkshopController.CONTROLLER_TYPE> controllerTypeConversion;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
+    {
+        isStarted = false;
+        controllerTypeConversion = new Dictionary<string, WorkshopController.CONTROLLER_TYPE>();
+        foreach (WorkshopController.CONTROLLER_TYPE controllerType in WorkshopController.CONTROLLER_TYPE.GetValues(typeof(WorkshopController.CONTROLLER_TYPE)))
+        {
+            controllerTypeConversion.Add(controllerType.ToString(), controllerType);
+        }
+    }
+
+    public WorkshopController.CONTROLLER_TYPE GetControllerType()
+    {
+        return controllerType;
+    }
+
+    public List<string> GetControllerTypeNames()
+    {
+        List<string> types = new List<string>();
+
+        foreach (string key in controllerTypeConversion.Keys)
+        {
+            types.Add(key);
+        }
+
+        return types;
+    }
+
+    public OUTPUT_TYPE GetCurrentOutputType()
+    {
+        return outputType;
+    }
+
+    void StartControllerInput()
     {
         //create instance of controller parent class, which constructs an instance of the selected controller class.
         currentController = new WorkshopControllerContainer(controllerType, gameObject);
@@ -37,23 +71,53 @@ public class UniversalAltCtrlInput : MonoBehaviour
         //initialize values
         currentValue = 0;
         prevValue = 0;
+        isStarted = true;
+    }
+
+    public void SelectControllerTypeAndStart(string controllerTypeStr)
+    {
+        if (controllerTypeConversion.ContainsKey(controllerTypeStr))
+        {
+            controllerType = controllerTypeConversion[controllerTypeStr];
+            StartControllerInput();
+        }
+    }
+
+    public void SelectControllerTypeWithoutStarting(string controllerTypeStr)
+    {
+
+        if (controllerTypeConversion.ContainsKey(controllerTypeStr))
+        {
+            controllerType = controllerTypeConversion[controllerTypeStr];
+        }
+    }
+
+    public void StartSelectedController()
+    {
+
+
+        StartControllerInput();
+
     }
 
     //Update polls for input, updates values, and throws an event if the value changes regardless of output type.
     void Update()
     {
-        //poll for input, depending on what kind of input/output is desired
-        int currentValContainer = currentValue;
-        int nextValContainer = currentController.PollForValue(outputType);
-        if (nextValContainer != -1)
+        if (isStarted && currentController != null)
         {
-            prevValue = currentValContainer;
-            currentValue = nextValContainer;
-
-            //throw an event if the value has changed. 
-            if (prevValue != currentValue && InputValueChanged != null)
+            //poll for input, depending on what kind of input/output is desired
+            int currentValContainer = currentValue;
+            int nextValContainer = currentController.PollForValue(outputType);
+            if (nextValContainer != -1)
             {
-                InputValueChanged(new InputValueChangedArgs(prevValue, currentValue));
+                prevValue = currentValContainer;
+                currentValue = nextValContainer;
+
+                //throw an event if the value has changed. 
+                if (prevValue != currentValue && InputValueChanged != null)
+                {
+                    InputValueChanged(new InputValueChangedArgs(prevValue, currentValue));
+                }
             }
         }
     }
@@ -85,7 +149,10 @@ public class UniversalAltCtrlInput : MonoBehaviour
 
     private void OnApplicationQuit()
     {
-        currentController.Shutdown();
+        if (currentController != null)
+        {
+            currentController.Shutdown();
+        }
     }
 }
 
@@ -211,7 +278,7 @@ public abstract class WorkshopController
             }
             catch (Exception e)
             {
-               // Debug.Log(e);
+                // Debug.Log(e);
 
                 //if fails, move on/do nothing
             }
@@ -238,7 +305,7 @@ public abstract class WorkshopController
 
     public int AnalogToDigital(int toConvert)
     {
-        if(toConvert == -1)
+        if (toConvert == -1)
         {
             return -1;
         }
@@ -424,9 +491,9 @@ public class KachunkLever : WorkshopController
                 //digital output
                 if (polledValue != 1)
                 {
-                    return 0;
+                    return 1;
                 }
-                return 1;
+                return 0;
             }
             else
             {
@@ -468,14 +535,9 @@ public class BigOleButton : WorkshopController
         if (mySerialController != null)
         {
             int polledValue = ParseArduinoOutput(mySerialController.ReadSerialMessage());
-            if (outputType == UniversalAltCtrlInput.OUTPUT_TYPE.Digital)
-            {
-                return AnalogToDigital(polledValue);
-            }
-            else
-            {
-                return polledValue;
-            }
+
+            return polledValue;
+
         }
         return 0;
     }
